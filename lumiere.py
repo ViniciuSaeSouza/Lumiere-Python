@@ -28,8 +28,6 @@ padroes_re = {
 
 # Funçõs e Rotinas
 
-# Tenta recuperar uma conexao com o banco de dados da classe `cria_conexao`, se conseguir, cria um cursor para executar instruções SQL, se não, 
-# Limpa o terminal de acordo com o sistema operacional
 def limpa_tela():
     os.system('cls' if os.name == 'Nt' else 'clear')
 
@@ -38,6 +36,7 @@ def finaliza_programa():
     print("Obrigado por usar o Lumiere! \nFinalizando o programa....")
     exit()
 
+# Tenta recuperar uma conexao com o banco de dados da classe `cria_conexao`, se conseguir, cria um cursor para executar instruções SQL, se não, limpa o terminal de acordo com o sistema operacional
 try:
     conn = recupera_conexao()
     inst_sql = conn.cursor()
@@ -65,14 +64,16 @@ def valida_formato(padrao:str, texto:str) -> bool:
         return False
     
 def valida_email_existente(email:str) -> list:
-    sql = f"SELECT * FROM tbl_usuarios_py WHERE email = '{email}'"
-    inst_sql.execute(sql)
-    data = inst_sql.fetchall()
-    if data:
-        return data
-    else:
-        return None
-
+    try:
+        sql = f"SELECT * FROM tbl_usuarios_py WHERE email = :email"
+        inst_sql.execute(sql, (email,))
+        data = inst_sql.fetchall()
+        
+        return data if data else []
+    except Exception as e:
+        print(f"Falha ao validar o e-mail! ERRO: {e}")
+        return []
+        
 def login():
     limpa_tela()
     login_info = {
@@ -92,7 +93,7 @@ def login():
                     login_info['senha'] = data[0][3]
                     print(login_info)
                 else:
-                    print("Nehum calango encontrado")
+                    print("E-mail incorreto ou não cadastrado! Digite novamente.")
             else:
                 print("Formato do email inválido!")
     except Exception as e:
