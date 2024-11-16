@@ -1,5 +1,5 @@
 import fitz  # PyMuPDF
-import re
+import re #Regex
 # Recebe o caminho do arquivo pdf a ser lido, o texto_alvo a ser encontrado e a margem que define o tamanho do bloco de procura em volta do texto_alvo
 def encontrar_texto_com_regiao(pdf_path:str, textos_alvo:list, padrao_re:str, margem=15) -> dict:
     try:

@@ -3,9 +3,8 @@
 # 554456 - Vinícius Saes de Souza - 1TDSPK
 from extrai_texto_pdf import encontrar_texto_com_regiao
 import os
-import oracledb
-import pandas as pd
-from datetime import datetime
+# import pandas as pd
+# from datetime import datetime
 import re
 from cria_conexao import recupera_conexao
 
