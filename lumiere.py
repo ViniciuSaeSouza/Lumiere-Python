@@ -66,7 +66,10 @@ def valida_formato(padrao:str, texto:str) -> tuple[bool,str]:
 def obter_nome() -> str:
     while True:
         confirmacao, nome = valida_formato("nome", input("Nome: ").capitalize())
-        if confirmacao:
+        if nome.upper() == "S":
+            main()
+            break
+        elif confirmacao:
             return nome
         else:
             print("---------------------------------------------------------------------------------")
@@ -76,7 +79,10 @@ def obter_nome() -> str:
 def obter_email() -> str:
     while True:
         confirmacao, email = valida_formato("email", input("E-mail: ").lower())
-        if confirmacao:
+        if email.upper() == "S":
+            main()
+            break
+        elif confirmacao:
             data = busca_email_existente(email)
             if not data:
                 return email
@@ -107,8 +113,11 @@ def obter_email() -> str:
 def obter_senha() -> str:
     while True:
         senha = input("Senha (sem padrão): ")
-        if senha:
+        if senha and senha.upper() != "S":
             return senha
+        elif senha.upper() == "S":
+            main()
+            break
         else:
             print("--------------------------------")
             print("Erro! Senha não pode estar vazia")
@@ -307,8 +316,35 @@ Senha: """)
                     break
                 
 
-def editar_conta():
-    pass
+def editar_conta(usuario_info:dict):
+    limpa_tela()
+    mostra_titulo("editar conta")
+    print(f"""
+Nome: {usuario_info['nome']}
+E-mail: {usuario_info['email']}
+Senha: {usuario_info['senha']}
+Caso não deseje editar algo, deixe o campo vazio e aperte Enter
+Digite [S] para sair""")
+    nome = obter_nome()
+    email = obter_email()
+    senha = obter_senha()
+
+    usuario_info['nome'] = nome if nome else usuario_info['nome']
+    usuario_info['email'] = email if email else usuario_info['email']
+    usuario_info['senha'] = senha if senha else usuario_info['senha']
+    while True:
+        print(f"""
+Nome: {usuario_info['nome']}
+E-mail: {usuario_info['email']}
+Senha: {usuario_info['senha']}
+Confirmar alteração dos dados?""")
+        escolha = input("1. Sim \n2. Não \nEscolha: ")
+        match escolha:
+            case "1":
+                pass
+            case "2":
+                
+        
     
 
 def dashboard(info:dict):
