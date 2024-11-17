@@ -35,6 +35,10 @@ def finalizar_programa():
     print("Obrigado por usar o Lumiere! \nFinalizando o programa....")
     exit()
 
+def msg_opcao_invalida():
+    print("---------------------------------------")
+    print("Erro! Opção inválida, digite novamente.")
+
 # Tenta recuperar uma conexao com o banco de dados da classe `cria_conexao`, se conseguir, cria um cursor para executar instruções SQL, se não, limpa o terminal de acordo com o sistema operacional
 try:
     conn = recupera_conexao()
@@ -63,26 +67,32 @@ def valida_formato(padrao:str, texto:str) -> tuple[bool,str]:
     else:
         return (False, texto)
     
-def obter_nome() -> str:
+def obter_nome(contexto=str) -> str:
     while True:
-        confirmacao, nome = valida_formato("nome", input("Nome: ").capitalize())
+        print("[S]air a qualquer momento")
+        validacao, nome = valida_formato("nome", input("Nome: ").capitalize())
         if nome.upper() == "S":
             main()
             break
-        elif confirmacao:
+        elif contexto == "editar" and nome == '':
+            return nome
+        elif validacao:
             return nome
         else:
             print("---------------------------------------------------------------------------------")
             print("Erro! Nome não pode estar vazio nem conter caracteres especiais como ex.(@,*,&,%)\n")
 
 
-def obter_email() -> str:
+def obter_email(contexto=str) -> str:
     while True:
-        confirmacao, email = valida_formato("email", input("E-mail: ").lower())
+        print("[S]air a qualquer momento")
+        validacao, email = valida_formato("email", input("E-mail: ").lower())
         if email.upper() == "S":
             main()
             break
-        elif confirmacao:
+        elif contexto == "editar" and email == '':
+            return email
+        elif validacao:
             data = busca_email_existente(email)
             if not data:
                 return email
@@ -110,14 +120,17 @@ def obter_email() -> str:
             print("Erro! Formato de E-mail inválido. Exemplo válido: exemplo@dominio.com.br \n")
 
 
-def obter_senha() -> str:
+def obter_senha(contexto=str) -> str:
     while True:
+        print("[S]air a qualquer momento")
         senha = input("Senha (sem padrão): ")
-        if senha and senha.upper() != "S":
-            return senha
-        elif senha.upper() == "S":
+        if senha.upper() == "S":
             main()
             break
+        elif contexto == "editar" and senha == '':
+            return senha
+        elif senha:
+            return senha
         else:
             print("--------------------------------")
             print("Erro! Senha não pode estar vazia")
@@ -184,9 +197,9 @@ Confirmar cadastro?
                             cadastro()
                             break
                         case _ :
-                            print("Erro! Opção inválida, digite novamente.")
+                            msg_opcao_invalida()
             case _:
-                print("Erro! Opção inválida, digite novamente.")
+                msg_opcao_invalida()
                 
 
 def login():
@@ -199,8 +212,8 @@ def login():
     mostra_titulo("login")
     try:
         while True:
-            confirmacao, email = valida_formato("email", input("E-mail: ").lower())
-            if confirmacao:
+            validacao, email = valida_formato("email", input("E-mail: ").lower())
+            if validacao:
                 data = busca_email_existente(email)
                 if data:
                     login_info['nome'] = data[0][1]
@@ -255,11 +268,11 @@ def editar_excluir_conta():
             'email' : '',
             'senha' : '',
         }
-        confirmacao, email = valida_formato("email", input("E-mail | [S]air: ").lower())
+        validacao, email = valida_formato("email", input("E-mail | [S]air: ").lower())
         if email == 's':
             main()
             break
-        elif not confirmacao:
+        elif not validacao:
             print("------------------------------------------------------------------------")
             print("Erro! Formato de E-mail inválido. Exemplo válido: exemplo@dominio.com.br\n")
         else:
@@ -273,7 +286,7 @@ def editar_excluir_conta():
                 usuario_info['senha'] = data[0][3]
                 while True:
                     print("----------------------")
-                    escolha = input("0.Menu Inicial \n1. Excluir conta \n2.Editar Conta \nEscolha: ")
+                    escolha = input("0. Menu Inicial \n1. Excluir conta \n2. Editar Conta \nEscolha: ")
                     match escolha:
                         case "0":
                             main()
@@ -285,8 +298,7 @@ def editar_excluir_conta():
                             editar_conta(usuario_info)
                             break
                         case _:
-                            print("---------------------------------------")
-                            print("Erro! Opção inválida, digite novamente.")
+                            msg_opcao_invalida()
                     
 def excluir_conta(usuario_info:dict):
     limpa_tela()
@@ -317,34 +329,55 @@ Senha: """)
                 
 
 def editar_conta(usuario_info:dict):
+    editar_info = {
+        'nome' : '',
+        'email' : '',
+        'senha' : '',
+    }
     limpa_tela()
+    
     mostra_titulo("editar conta")
+    
     print(f"""
 Nome: {usuario_info['nome']}
 E-mail: {usuario_info['email']}
 Senha: {usuario_info['senha']}
-Caso não deseje editar algo, deixe o campo vazio e aperte Enter
-Digite [S] para sair""")
-    nome = obter_nome()
-    email = obter_email()
-    senha = obter_senha()
+Caso não deseje editar algo, deixe o campo vazio e aperte Enter""")
+    
+    nome = obter_nome(contexto="editar")
+    email = obter_email(contexto="editar")
+    senha = obter_senha(contexto="editar")
 
-    usuario_info['nome'] = nome if nome else usuario_info['nome']
-    usuario_info['email'] = email if email else usuario_info['email']
-    usuario_info['senha'] = senha if senha else usuario_info['senha']
+    editar_info['nome'] = nome if nome else usuario_info['nome']
+    editar_info['email'] = email if email else usuario_info['email']
+    editar_info['senha'] = senha if senha else usuario_info['senha']
     while True:
         print(f"""
-Nome: {usuario_info['nome']}
-E-mail: {usuario_info['email']}
-Senha: {usuario_info['senha']}
+Nome: {editar_info['nome']}
+E-mail: {editar_info['email']}
+Senha: {editar_info['senha']}
 Confirmar alteração dos dados?""")
-        escolha = input("1. Sim \n2. Não \nEscolha: ")
+        escolha = input("1. Sim \n2. Não \n3. Menu \nEscolha: ")
         match escolha:
             case "1":
-                pass
+                sql = "UPDATE tbl_usuarios_py SET nome = :nome, email = :email, senha = :senha WHERE email = :email_atual"
+                try:
+                    inst_sql.execute(sql, (editar_info['nome'], editar_info['email'], editar_info['senha'], usuario_info['email']))
+                    conn.commit()
+                    print("Informações da conta atualizadas com sucesso!")
+                    input("Aperte qualquer tecla para voltar ao menu principal: ")
+                    main()
+                    break
+                except Exception as e:
+                    print(f"Erro ao atualizar dados da base! Erro: {e}")
             case "2":
-                
-        
+                editar_conta(usuario_info)
+                break
+            case "3":
+                main()
+                break
+            case _:
+                msg_opcao_invalida()
     
 
 def dashboard(info:dict):
@@ -374,8 +407,7 @@ Escolha: """)
                 editar_excluir_conta()
                 break
             case _:
-                print("---------------------------------------")
-                print("Erro! Opção inválida, digite novamente.")
+                msg_opcao_invalida()
 
 if __name__ == '__main__':
     main()
