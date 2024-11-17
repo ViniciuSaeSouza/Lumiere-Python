@@ -30,7 +30,7 @@ padroes_re = {
 def limpa_tela():
     os.system('cls' if os.name == 'Nt' else 'clear')
 
-def finaliza_programa():
+def finalizar_programa():
     limpa_tela()
     print("Obrigado por usar o Lumiere! \nFinalizando o programa....")
     exit()
@@ -44,7 +44,7 @@ except Exception as e:
     print(f"\t***ERRO*** \n- Ops! infelizmente tivemos uma falha ao recuperar a conexao com o banco de dados!\n- Verifique a conexão com o Banco de Dados Oracle no arquivo `cria_conexao` ou acione o autor do código! \n- Sentimos muito por isso! :(")
     input("Pressione qualquer tecla para sair do programa: ")
     conn.close()
-    finaliza_programa()
+    finalizar_programa()
     
 
 
@@ -56,12 +56,64 @@ def mostra_titulo(titulo:str):
     print("**" * (tam + 2))
 
 
-def valida_formato(padrao:str, texto:str) -> bool:
+def valida_formato(padrao:str, texto:str) -> tuple[bool,str]:
+    texto = texto.lower()
     if re.match(padroes_re[padrao], texto):
-        return True
+        return (True, texto)
     else:
-        return False
+        return (False, texto)
     
+def obter_nome() -> str:
+    while True:
+        confirmacao, nome = valida_formato("nome", input("Nome: ").capitalize())
+        if confirmacao:
+            return nome
+        else:
+            print("---------------------------------------------------------------------------------")
+            print("Erro! Nome não pode estar vazio nem conter caracteres especiais como ex.(@,*,&,%)\n")
+
+
+def obter_email() -> str:
+    while True:
+        confirmacao, email = valida_formato("email", input("E-mail: ").lower())
+        if confirmacao:
+            data = busca_email_existente(email)
+            if not data:
+                return email
+            else:
+                print("------------------------------------------------------")
+                print("Erro! Já existe um usuário com este e-mail cadastrado!\n")
+                while True:
+                    escolha = input("0.Sair \n1. Digitar outro e-mail \n2.Fazer login \n3. Esqueci minha senha \nEscolha: ")
+                    match escolha:
+                        case "0":
+                            finalizar_programa()
+                        case "1":
+                            break
+                        case "2":
+                            login()
+                            break
+                        case "3":
+                            editar_excluir_conta()
+                            break
+                        case _:
+                            print("--------------------------------------")
+                            print("Erro! Opção inválida, digite novamente")       
+        else:
+            print("------------------------------------------------------------------------")
+            print("Erro! Formato de E-mail inválido. Exemplo válido: exemplo@dominio.com.br \n")
+
+
+def obter_senha() -> str:
+    while True:
+        senha = input("Senha (sem padrão): ")
+        if senha:
+            return senha
+        else:
+            print("--------------------------------")
+            print("Erro! Senha não pode estar vazia")
+
+
 def busca_email_existente(email:str) -> list:
     try:
         sql = f"SELECT * FROM tbl_usuarios_py WHERE email = :email"
@@ -72,11 +124,61 @@ def busca_email_existente(email:str) -> list:
         print(f"Falha ao buscar e-mail na base de dados! ERRO: {e}")
         return []
         
-        
-        
 def cadastro():
-    pass
-
+    limpa_tela()
+    mostra_titulo("cadastro")
+    cadastro_info = {
+        'nome' : '',
+        'email' : '',
+        'senha': '',
+    }
+    
+    # Nome
+    cadastro_info['nome'] = obter_nome()
+    
+    # E - mail
+    cadastro_info['email'] = obter_email()
+    
+    # Senha
+    cadastro_info['senha'] = obter_senha()
+    
+    while True:
+        limpa_tela()
+        print(f"""
+Nome: {cadastro_info['nome']}
+E-mail: {cadastro_info['email']}
+Senha: {cadastro_info['senha']}
+Confirmar cadastro?
+    """)
+        escolha = input("[S]im || [N]ão: ").upper()
+        limpa_tela()
+        match escolha:
+            case "S":
+                try:
+                    sql = "INSERT INTO tbl_usuarios_py (nome, email, senha) VALUES (:nome, :email, :senha)"
+                    inst_sql.execute(sql, (cadastro_info["nome"], cadastro_info["email"], cadastro_info["senha"]))
+                    conn.commit()
+                    input("Cadastro realizado com sucesso! \nAperte qualquer tecla para ser redirecionado à tela de login: ")
+                    login()
+                    break
+                except Exception as e:
+                    print("---------------------------------------------------------")
+                    print(f"Falha ao realizar o cadastro na base de dados! Erro: {e}")
+                    break
+            case "N":
+                while True:
+                    escolha = input("0. Sair \n1. Preencher cadastro novamente \nEscolha: ")
+                    match escolha:
+                        case "0":
+                            finalizar_programa()
+                        case "1":
+                            cadastro()
+                            break
+                        case _ :
+                            print("Erro! Opção inválida, digite novamente.")
+            case _:
+                print("Erro! Opção inválida, digite novamente.")
+                
 
 def login():
     limpa_tela()
@@ -88,8 +190,8 @@ def login():
     mostra_titulo("login")
     try:
         while True:
-            email = input("E-mail: ").lower()
-            if valida_formato("email", email):
+            confirmacao, email = valida_formato("email", input("E-mail: ").lower())
+            if confirmacao:
                 data = busca_email_existente(email)
                 if data:
                     login_info['nome'] = data[0][1]
@@ -98,18 +200,19 @@ def login():
                     break
                 else:
                     print("---------------------")                
-                    print("E-mail incorreto ou ainda não cadastrado!")
+                    print("E-mail incorreto ou ainda não cadastrado!\n")
                     escolha = input("1. Digitar novamente \n2. Fazer Cadastro \nEscolha: ")
                     match escolha:
                         case "1":
                             pass
                         case "2":
                             cadastro()
+                            break
                         case _:
                             print("Opção inválida! Digite novamente: ")
                             escolha = input("1. Digitar novamente \n2. Fazer Cadastro \nEscolha: ")
             else:
-                print("Formato do email inválido!")
+                print("Erro! Formato de E-mail inválido. Exemplo válido: exemplo@dominio.com.br \n")
                 
         while True:    
             senha = input("Senha: ")
@@ -135,7 +238,78 @@ def login():
         print(f"ERRO: {e}")
 
 def editar_excluir_conta():
+    limpa_tela()
+    while True:
+        mostra_titulo("editar | excluir conta")
+        usuario_info = {
+            'nome' : '',
+            'email' : '',
+            'senha' : '',
+        }
+        confirmacao, email = valida_formato("email", input("E-mail | [S]air: ").lower())
+        if email == 's':
+            main()
+            break
+        elif not confirmacao:
+            print("------------------------------------------------------------------------")
+            print("Erro! Formato de E-mail inválido. Exemplo válido: exemplo@dominio.com.br\n")
+        else:
+            data = busca_email_existente(email)
+            if not data:
+                print("-----------------------------------------")
+                print("Erro! E-mail incorreto ou não cadastrado.")
+            else: 
+                usuario_info['nome'] = data[0][1]
+                usuario_info['email'] = data[0][2]
+                usuario_info['senha'] = data[0][3]
+                while True:
+                    print("----------------------")
+                    escolha = input("0.Menu Inicial \n1. Excluir conta \n2.Editar Conta \nEscolha: ")
+                    match escolha:
+                        case "0":
+                            main()
+                            break
+                        case "1":
+                            excluir_conta(usuario_info)
+                            break
+                        case "2":
+                            editar_conta(usuario_info)
+                            break
+                        case _:
+                            print("---------------------------------------")
+                            print("Erro! Opção inválida, digite novamente.")
+                    
+def excluir_conta(usuario_info:dict):
+    limpa_tela()
+    mostra_titulo("excluir conta")
+    while True:
+        senha = input(f"""
+Nome: {usuario_info['nome']}
+E-mail: {usuario_info['email']}
+Para confirmar a exclusão da conta, digite sua senha (Ao digitar a senha correta a conta será excluida)
+Senha: """)
+        
+        if senha == usuario_info['senha']:
+            sql = "DELETE FROM TBL_USUARIOS_PY WHERE email = :email"
+            inst_sql.execute(sql, (usuario_info['email'],))
+            conn.commit()
+            input("Usuário deletado com sucesso! \nAperte qualquer tecla para voltar ao menu inicial: ")
+            main()
+            break
+        else:
+            print("Senha incorreta! \n Digitar novamente? ")
+            escolha = input("1. Sim \n2. Menu \nEscolha: ")
+            match escolha:
+                case "1":
+                    pass
+                case "2":
+                    main()
+                    break
+                
+
+def editar_conta():
     pass
+    
 
 def dashboard(info:dict):
     pass
@@ -143,23 +317,29 @@ def dashboard(info:dict):
 def main():
     limpa_tela()
     mostra_titulo("lumiere")
-    escolha = input("""
+    while True:
+        escolha = input("""
 0. Sair
 1. Login
 2. Cadastro
 3. Editar | Excluir Conta
-Escolha: 
-""")
-    match escolha:
-        case "0":
-            conn.close()
-            finaliza_programa()
-        case "1":
-            login()
-        case "2":
-            pass
-        case "3":
-            pass
+Escolha: """)
+        match escolha:
+            case "0":
+                conn.close()
+                finalizar_programa()
+            case "1":
+                login()
+                break
+            case "2":
+                cadastro()
+                break
+            case "3":
+                editar_excluir_conta()
+                break
+            case _:
+                print("---------------------------------------")
+                print("Erro! Opção inválida, digite novamente.")
 
 if __name__ == '__main__':
     main()
