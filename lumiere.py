@@ -1,12 +1,15 @@
 # 558843 - Laura de Oliveira Cintra - 1TDSPK
 # 558832 - Maria Eduarda Alves da Paixão - 1TDSPK
 # 554456 - Vinícius Saes de Souza - 1TDSPK
-from extrai_texto_pdf import encontrar_texto_com_regiao
-import os
 # import pandas as pd
-# from datetime import datetime
+from datetime import datetime
+import os
 import re
+import oracledb
+import random
 from cria_conexao import recupera_conexao
+from obter_pdf import obter_pdf_source
+
 
 # Variáveis e recusros globais
 titulos =  {
@@ -24,13 +27,20 @@ padroes_re = {
     "nome" : r"^[a-zA-Z]+( [a-zA-Z]+)*$",
     "email" : r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
 }
-
+usuario_info = {
+    'id' : 0,
+    'nome' : '',
+    'email' : '',
+    'senha' : ''
+}
 # Funçõs e Rotinas
 
 def limpa_tela():
     os.system('cls' if os.name == 'Nt' else 'clear')
 
 def finalizar_programa():
+    if conn != None:
+        conn.close()
     limpa_tela()
     print("Obrigado por usar o Lumiere! \nFinalizando o programa....")
     exit()
@@ -42,15 +52,15 @@ def msg_opcao_invalida():
 # Tenta recuperar uma conexao com o banco de dados da classe `cria_conexao`, se conseguir, cria um cursor para executar instruções SQL, se não, limpa o terminal de acordo com o sistema operacional
 try:
     conn = recupera_conexao()
-    inst_sql = conn.cursor()
+    if conn == None:
+        raise Exception
+    else:
+        inst_sql = conn.cursor()
 except Exception as e:
     limpa_tela()
     print(f"\t***ERRO*** \n- Ops! infelizmente tivemos uma falha ao recuperar a conexao com o banco de dados!\n- Verifique a conexão com o Banco de Dados Oracle no arquivo `cria_conexao` ou acione o autor do código! \n- Sentimos muito por isso! :(")
     input("Pressione qualquer tecla para sair do programa: ")
-    conn.close()
     finalizar_programa()
-    
-
 
 # Recebe um texto:titulo como parâmetro e mostra no terminal
 def mostra_titulo(titulo:str):
@@ -82,8 +92,7 @@ def obter_nome(contexto=str) -> str:
             print("---------------------------------------------------------------------------------")
             print("Erro! Nome não pode estar vazio nem conter caracteres especiais como ex.(@,*,&,%)\n")
 
-
-def obter_email(contexto=str) -> str:
+def obter_email(contexto=str) -> str | dict:
     while True:
         print("[S]air a qualquer momento")
         validacao, email = valida_formato("email", input("E-mail: ").lower())
@@ -94,27 +103,34 @@ def obter_email(contexto=str) -> str:
             return email
         elif validacao:
             data = busca_email_existente(email)
-            if not data:
-                return email
-            else:
-                print("------------------------------------------------------")
-                print("Erro! Já existe um usuário com este e-mail cadastrado!\n")
-                while True:
-                    escolha = input("0.Sair \n1. Digitar outro e-mail \n2.Fazer login \n3. Esqueci minha senha \nEscolha: ")
-                    match escolha:
-                        case "0":
-                            finalizar_programa()
-                        case "1":
-                            break
-                        case "2":
-                            login()
-                            break
-                        case "3":
-                            editar_excluir_conta()
-                            break
-                        case _:
-                            print("--------------------------------------")
-                            print("Erro! Opção inválida, digite novamente")       
+            if contexto == "login" or contexto == "excluir":
+                if data:
+                    return data
+                else:
+                    return {}
+            
+            if contexto == "cadastro":
+                if not data:
+                    return email
+                else:
+                    print("------------------------------------------------------")
+                    print("Erro! Já existe um usuário com este e-mail cadastrado!\n")
+                    while True:
+                        escolha = input("0.Sair \n1. Digitar outro e-mail \n2. Fazer login \n3. Esqueci minha senha \nEscolha: ")
+                        match escolha:
+                            case "0":
+                                finalizar_programa()
+                            case "1":
+                                break
+                            case "2":
+                                login()
+                                break
+                            case "3":
+                                editar_excluir_conta()
+                                break
+                            case _:
+                                print("--------------------------------------")
+                                print("Erro! Opção inválida, digite novamente")       
         else:
             print("------------------------------------------------------------------------")
             print("Erro! Formato de E-mail inválido. Exemplo válido: exemplo@dominio.com.br \n")
@@ -159,7 +175,7 @@ def cadastro():
     cadastro_info['nome'] = obter_nome()
     
     # E - mail
-    cadastro_info['email'] = obter_email()
+    cadastro_info['email'] = obter_email(contexto="cadastro")
     
     # Senha
     cadastro_info['senha'] = obter_senha()
@@ -201,45 +217,39 @@ Confirmar cadastro?
             case _:
                 msg_opcao_invalida()
                 
-
 def login():
     limpa_tela()
-    login_info = {
-        'nome' : '',
-        'email' : '',
-        'senha': '',
-    }
     mostra_titulo("login")
+    print()
     try:
         while True:
-            validacao, email = valida_formato("email", input("E-mail: ").lower())
-            if validacao:
-                data = busca_email_existente(email)
-                if data:
-                    login_info['nome'] = data[0][1]
-                    login_info['email'] = data[0][2]
-                    login_info['senha'] = data[0][3]
-                    break
-                else:
-                    print("---------------------")                
-                    print("E-mail incorreto ou ainda não cadastrado!\n")
-                    escolha = input("1. Digitar novamente \n2. Fazer Cadastro \nEscolha: ")
-                    match escolha:
-                        case "1":
-                            pass
-                        case "2":
-                            cadastro()
-                            break
-                        case _:
-                            print("Opção inválida! Digite novamente: ")
-                            escolha = input("1. Digitar novamente \n2. Fazer Cadastro \nEscolha: ")
+            data = obter_email(contexto="login")
+            if data:
+                usuario_info['id'] = data[0][0]
+                usuario_info['nome'] = data[0][1]
+                usuario_info['email'] = data[0][2]
+                usuario_info['senha'] = data[0][3]
+                break
             else:
-                print("Erro! Formato de E-mail inválido. Exemplo válido: exemplo@dominio.com.br \n")
+                print("---------------------")                
+                print("E-mail incorreto ou ainda não cadastrado!\n")
+                escolha = input("1. Digitar novamente \n2. Fazer Cadastro \nEscolha: ")
+                match escolha:
+                    case "1":
+                        pass
+                    case "2":
+                        cadastro()
+                        break
+                    case _:
+                        print("Opção inválida! Digite novamente: ")
+                        escolha = input("1. Digitar novamente \n2. Fazer Cadastro \nEscolha: ")
+        
+            
                 
         while True:    
-            senha = input("Senha: ")
-            if senha == login_info['senha']:
-                dashboard(login_info)
+            senha = obter_senha()
+            if senha == usuario_info['senha']:
+                menu_usuario()
                 break
             else:
                 print("---------------------")
@@ -255,64 +265,51 @@ def login():
                         case _:
                             print("---------------------")
                             print("Opção inválida")
-            
     except Exception as e:
         print(f"ERRO: {e}")
 
 def editar_excluir_conta():
+    excluir_info = usuario_info.copy()
     limpa_tela()
     while True:
         mostra_titulo("editar | excluir conta")
-        usuario_info = {
-            'nome' : '',
-            'email' : '',
-            'senha' : '',
-        }
-        validacao, email = valida_formato("email", input("E-mail | [S]air: ").lower())
-        if email == 's':
-            main()
-            break
-        elif not validacao:
-            print("------------------------------------------------------------------------")
-            print("Erro! Formato de E-mail inválido. Exemplo válido: exemplo@dominio.com.br\n")
-        else:
-            data = busca_email_existente(email)
-            if not data:
-                print("-----------------------------------------")
-                print("Erro! E-mail incorreto ou não cadastrado.")
-            else: 
-                usuario_info['nome'] = data[0][1]
-                usuario_info['email'] = data[0][2]
-                usuario_info['senha'] = data[0][3]
-                while True:
-                    print("----------------------")
-                    escolha = input("0. Menu Inicial \n1. Excluir conta \n2. Editar Conta \nEscolha: ")
-                    match escolha:
-                        case "0":
-                            main()
-                            break
-                        case "1":
-                            excluir_conta(usuario_info)
-                            break
-                        case "2":
-                            editar_conta(usuario_info)
-                            break
-                        case _:
-                            msg_opcao_invalida()
+        data = obter_email("excluir")
+        if not data:
+            print("-----------------------------------------")
+            print("Erro! E-mail incorreto ou não cadastrado.")
+        else: 
+            excluir_info['nome'] = data[0][1]
+            excluir_info['email'] = data[0][2]
+            excluir_info['senha'] = data[0][3]
+            while True:
+                print("----------------------")
+                escolha = input("0. Menu Inicial \n1. Excluir conta \n2. Editar Conta \nEscolha: ")
+                match escolha:
+                    case "0":
+                        main()
+                        break
+                    case "1":
+                        excluir_conta()
+                        break
+                    case "2":
+                        editar_conta(excluir_info)
+                        break
+                    case _:
+                        msg_opcao_invalida()
                     
-def excluir_conta(usuario_info:dict):
+def excluir_conta(excluir_info:dict):
     limpa_tela()
     mostra_titulo("excluir conta")
     while True:
         senha = input(f"""
-Nome: {usuario_info['nome']}
-E-mail: {usuario_info['email']}
+Nome: {excluir_info['nome']}
+E-mail: {excluir_info['email']}
 Para confirmar a exclusão da conta, digite sua senha (Ao digitar a senha correta a conta será excluida)
 Senha: """)
         
-        if senha == usuario_info['senha']:
+        if senha == excluir_info['senha']:
             sql = "DELETE FROM TBL_USUARIOS_PY WHERE email = :email"
-            inst_sql.execute(sql, (usuario_info['email'],))
+            inst_sql.execute(sql, {'email' : excluir_info['email']})
             conn.commit()
             input("Usuário deletado com sucesso! \nAperte qualquer tecla para voltar ao menu inicial: ")
             main()
@@ -327,8 +324,7 @@ Senha: """)
                     main()
                     break
                 
-
-def editar_conta(usuario_info:dict):
+def editar_conta():
     editar_info = {
         'nome' : '',
         'email' : '',
@@ -362,7 +358,7 @@ Confirmar alteração dos dados?""")
             case "1":
                 sql = "UPDATE tbl_usuarios_py SET nome = :nome, email = :email, senha = :senha WHERE email = :email_atual"
                 try:
-                    inst_sql.execute(sql, (editar_info['nome'], editar_info['email'], editar_info['senha'], usuario_info['email']))
+                    inst_sql.execute(sql, {'nome' : editar_info['nome'], 'email' : editar_info['email'], 'senha' : editar_info['senha'], 'email_atual' : usuario_info['email']})
                     conn.commit()
                     print("Informações da conta atualizadas com sucesso!")
                     input("Aperte qualquer tecla para voltar ao menu principal: ")
@@ -378,11 +374,176 @@ Confirmar alteração dos dados?""")
                 break
             case _:
                 msg_opcao_invalida()
+
+def menu_usuario():
+    limpa_tela()
+    mostra_titulo(f"Bem vindo(a), {usuario_info['nome']}")
+    while True:
+        escolha = input(
+"""0. Sair
+1. Registrar consumo
+2. Gerar relatório
+3. Fazer consulta
+Escolha: """)
+        
+        match escolha:
+            case "0":
+                finalizar_programa()
+            case "1":
+                menu_registro_consumo()
+            case "2":
+                gerar_relatorio()
+            case "3":
+                ...
+            case _:
+                msg_opcao_invalida()
+    
+def menu_registro_consumo():
+    while True:
+        limpa_tela()
+        mostra_titulo("registro de consumo")
+        escolha = input("""**Recomendamos no ínicio cadastrar pelo menos 03 meses de consumo para que o gráfico possa ser gerado!**
+0. Sair
+1. Registro manual
+2. Registrar via conta de luz
+3. Simular registros
+Escolha: """)
+        match escolha:
+            case "0":
+                finalizar_programa()
+            case "1":
+                registro_manual()
+            case "2":
+                registro_pdf()
+            case "3":
+                simular_registros()
+
+def registro_manual():
+    limpa_tela()
+    mostra_titulo("registro manual")
+    
+    # Funções auxiliares
+    def obter_mes_consumo() -> int:
+        while True:
+            try:
+                mes_consumo = int(input("Digite o número do mês de consumo ex.(Janeiro = 1): "))
+                if mes_consumo < 1 or mes_consumo > 12:
+                    print(f"Erro! Número do mês inválido: {mes_consumo}. Digite novamente.\n")
+                else:
+                    return mes_consumo
+            except ValueError as e:
+                print("Erro! Mês precisa ser um número.")
+            except Exception as e:
+                print(f"Erro ao salvar o mês consumo. Erro: {e}")
+    def obter_consumo_kwh() -> int:
+        while True:
+            try:
+                consumo_kwh = int(input("Digite o valor do consumo do respectivo mês ex.(kWh = 402): "))
+                if consumo_kwh < 1:
+                    print(f"Erro! Consumo não pode ser abaixo de 1. Digite novamente.\n")
+                else:
+                    return consumo_kwh
+            except ValueError as e:
+                print("Erro! Consumo kWh/mês precisa ser um número.")
+            except Exception as e:
+                print(f"Erro ao salvar o consumo kWh/mês. Erro: {e}")
+   
+    mes_consumo = obter_mes_consumo()
+    consumo_kwh = obter_consumo_kwh()
+    
+    id = usuario_info['id']
+    
+    if cadastrar_consumo(mes_consumo, consumo_kwh, id):
+        print("Cadastro do consumo realizado!")
+        while True:
+            escolha = input("Cadastrar outro mês? \n1.Sim \n2.Não(Menu usuario) \nEscolha: ")
+            match escolha:
+                case "1":
+                    menu_registro_consumo()
+                case "2":
+                    menu_usuario()
+                case _:
+                    msg_opcao_invalida()
+
+def registro_pdf():
+    consumo_info = obter_pdf_source()
+    while True:
+        escolha = input("Deseja confirmar o cadastro do consumo? \n1. Sim \n2. Não(Menu registro) \nEscolha: ")
+        match escolha:
+            case "1":
+                if cadastrar_consumo(consumo_info['mes_consumo'], consumo_info['consumo'], usuario_info['id']):
+                    input("Resultado cadastrado com sucesso! \nAperte qualquer tecla para continuar: ")
+                else:
+                    input("Falha ao cadastrar o consumo! Verifique se o mês da conta já não foi cadastrado \nAperte qualquer tecla para continuar: ")
+                break
+            case "2":
+                menu_registro_consumo()
+                break
+            case _:
+                msg_opcao_invalida()
+        
+
+
+def simular_registros():
+    limpa_tela()
+    mostra_titulo("Simular Registros de Consumo")
+    # Solicitar ao usuário o número de registros a serem simulados
+    while True:
+        try:
+            num_registros = int(input("Quantos registros você deseja simular? \nEscolha: "))
+            if num_registros < 1:
+                print("Erro! O número de registros deve ser pelo menos 1.")
+            else:
+                break
+        except ValueError:
+            print("Erro! Por favor, insira um número válido.")
+    
+    id_usuario = usuario_info['id']
+    ano_atual = datetime.now().year  # Obtendo o ano atual
+   # Começar do mês atual
+    mes_atual = datetime.now().month
+    
+    for i in range(num_registros):
+        # Calcular o mês e o ano para cada registro
+        mes_consumo = mes_atual - i
+        ano_consumo = ano_atual + (mes_consumo - 1) // 12  # Incrementa o ano se necessário
+        mes_consumo = (mes_consumo - 1) % 12 + 1 
+        # Formatar o mês e ano no formato "MM-YYYY"
+        mes_ano_consumo = f"{mes_consumo:02d}-{ano_consumo}"
+        # Gerar um consumo aleatório entre 150 e 1000 kWh
+        consumo_kwh = random.randint(150, 1000)
+        
+        # Cadastrar o consumo gerado no banco de dados
+        if cadastrar_consumo(mes_ano_consumo, consumo_kwh, id_usuario):
+            print(f"Registro cadastrado: Mês {mes_ano_consumo}, Consumo {consumo_kwh} kWh.")
+        else:
+            print(f"Falha ao cadastrar o registro para o mês {mes_ano_consumo}.")
+    
+    input("Simulação concluída! Aperte qualquer tecla para voltar ao menu de registro de consumo: ")
+    menu_registro_consumo()
+
+    
+    
+   
+
+def cadastrar_consumo(mes_consumo:str|int, consumo_kwh:int, id:int) -> bool:
+    try:
+        sql = "INSERT INTO tbl_consumos_py (id_usuario, consumo, mes_consumo) VALUES (:id, :consumo, TO_DATE(:mes_consumo, 'MM-YYYY'))"
+        inst_sql.execute(sql, {'id' : id, 'consumo' : consumo_kwh, 'mes_consumo' : mes_consumo})
+        conn.commit()
+        return True
+    except oracledb.DatabaseError:
+        return False
+    except Exception as e:
+        print(f"Falha ao cadastrar consumo na base de dados! Erro: {e}")
+        return False
     
 
-def dashboard(info:dict):
+def gerar_relatorio():
     pass
-
+    
+    
+    
 def main():
     limpa_tela()
     mostra_titulo("lumiere")
@@ -395,7 +556,6 @@ def main():
 Escolha: """)
         match escolha:
             case "0":
-                conn.close()
                 finalizar_programa()
             case "1":
                 login()

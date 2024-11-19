@@ -12,5 +12,5 @@ def recupera_conexao() -> oracledb.Connection:
 		conn = oracledb.connect(user=user, password=password, dsn=dsn)
 		return conn
 	except oracledb.OperationalError as e:
-		print("Falha ao criar conexão!")
+		print(f"Falha ao criar conexão! Erro: {e}")
 	

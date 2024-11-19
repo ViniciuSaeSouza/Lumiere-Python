@@ -1,5 +1,6 @@
 import fitz  # PyMuPDF
 import re #Regex
+import oracledb
 # Recebe o caminho do arquivo pdf a ser lido, o texto_alvo a ser encontrado e a margem que define o tamanho do bloco de procura em volta do texto_alvo
 def encontrar_texto_com_regiao(pdf_path:str, textos_alvo:list, padrao_re:str, margem=15) -> dict:
     try:
@@ -8,7 +9,7 @@ def encontrar_texto_com_regiao(pdf_path:str, textos_alvo:list, padrao_re:str, ma
         # Inicia um dicionário vazio para guardar os resultados de todos os textos_alvos | padrao_re passados
         resultados = {
             'consumo': 0,
-            'data_conta': '',
+            'mes_consumo': '',
             'cep' : ''
         }
         pagina = doc.load_page(0)
@@ -33,7 +34,7 @@ def encontrar_texto_com_regiao(pdf_path:str, textos_alvo:list, padrao_re:str, ma
                     
                     match alvo:
                         case "Conta do mês":
-                            resultados["data_conta"] = texto_area.strip()[27:]
+                            resultados["mes_consumo"] = texto_area.strip()[27:]
                         case "Consumo mês / kWh":
                             resultados["consumo"] = int((texto_area[-4:]).strip())
                             
