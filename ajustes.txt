@@ -1,0 +1,5 @@
+ajustar [S]sair aparecer só 1 vez
+
+criar consultar registros (DataFrame)
+
+ajustar registro_manual()

@@ -1,7 +1,7 @@
 # 558843 - Laura de Oliveira Cintra - 1TDSPK
 # 558832 - Maria Eduarda Alves da Paixão - 1TDSPK
 # 554456 - Vinícius Saes de Souza - 1TDSPK
-# import pandas as pd
+import pandas as pd
 from datetime import datetime
 import os
 import re
@@ -9,6 +9,8 @@ import oracledb
 import random
 from cria_conexao import recupera_conexao
 from obter_pdf import obter_pdf_source
+from gerar_grafico import gerar_grafico_consumo
+from exportar_excel import exportar_para_excel
 
 
 # Variáveis e recusros globais
@@ -403,14 +405,14 @@ def menu_registro_consumo():
         limpa_tela()
         mostra_titulo("registro de consumo")
         escolha = input("""**Recomendamos no ínicio cadastrar pelo menos 03 meses de consumo para que o gráfico possa ser gerado!**
-0. Sair
+0. Menu
 1. Registro manual
 2. Registrar via conta de luz
 3. Simular registros
 Escolha: """)
         match escolha:
             case "0":
-                finalizar_programa()
+                menu_usuario()
             case "1":
                 registro_manual()
             case "2":
@@ -418,6 +420,8 @@ Escolha: """)
             case "3":
                 simular_registros()
 
+
+# CORRIGIR REGISTRO, ESTÁ PULANDO A CONFIRMAÇÃO E A INSERÇÃO NO BD
 def registro_manual():
     limpa_tela()
     mostra_titulo("registro manual")
@@ -482,8 +486,6 @@ def registro_pdf():
             case _:
                 msg_opcao_invalida()
         
-
-
 def simular_registros():
     limpa_tela()
     mostra_titulo("Simular Registros de Consumo")
@@ -522,10 +524,6 @@ def simular_registros():
     input("Simulação concluída! Aperte qualquer tecla para voltar ao menu de registro de consumo: ")
     menu_registro_consumo()
 
-    
-    
-   
-
 def cadastrar_consumo(mes_consumo:str|int, consumo_kwh:int, id:int) -> bool:
     try:
         sql = "INSERT INTO tbl_consumos_py (id_usuario, consumo, mes_consumo) VALUES (:id, :consumo, TO_DATE(:mes_consumo, 'MM-YYYY'))"
@@ -540,9 +538,41 @@ def cadastrar_consumo(mes_consumo:str|int, consumo_kwh:int, id:int) -> bool:
     
 
 def gerar_relatorio():
-    pass
+    limpa_tela()
+    mostra_titulo("gerar relatório")
+    df_consumos = busca_consumos()
+    colunas_desejadas = ['Consumo kwh/mês', 'Mês Consumo', 'Data Registro']
+    mostra_consumos_df(df_consumos[colunas_desejadas])
+    while True:
+        escolha = input("\nOPÇÕES \n0. Menu \n1. Gerar gráfico \n2. Exportar dados para Excel \nEscolha: ")
+        match escolha:
+            case "0":
+                menu_usuario()
+            case "1":
+                gerar_grafico_consumo(df_consumos, usuario_info)
+                limpa_tela()
+            case "2":
+                pass
+                limpa_tela()
+                exportar_para_excel(df_consumos)
+                input("Digite qualquer tecla para voltar ao menu de consumos: ")
+                menu_registro_consumo()
+            case _:
+                msg_opcao_invalida()
     
-    
+def busca_consumos() -> pd.DataFrame:
+    sql = "SELECT * FROM tbl_consumos_py WHERE id_usuario = :id"
+    inst_sql.execute(sql, {'id' : usuario_info['id']})
+    data = inst_sql.fetchall()
+    df_consumos = pd.DataFrame(data, columns=['Id Consumo', 'Id Usuario', 'Consumo kwh/mês', 'Mês Consumo', 'Data Registro'])
+    return df_consumos    
+
+
+def mostra_consumos_df(df_consumos:pd.DataFrame):
+    print("----------------------------------------")
+    print("\t \tCONSUMOS\n")
+    print(df_consumos)
+    print("----------------------------------------")
     
 def main():
     limpa_tela()
@@ -571,3 +601,4 @@ Escolha: """)
 
 if __name__ == '__main__':
     main()
+    

@@ -1,6 +1,8 @@
 import fitz  # PyMuPDF
 import re #Regex
-import oracledb
+from datetime import datetime
+
+ano_atual = str(datetime.now().year)
 # Recebe o caminho do arquivo pdf a ser lido, o texto_alvo a ser encontrado e a margem que define o tamanho do bloco de procura em volta do texto_alvo
 def encontrar_texto_com_regiao(pdf_path:str, textos_alvo:list, padrao_re:str, margem=15) -> dict:
     try:
@@ -24,7 +26,7 @@ def encontrar_texto_com_regiao(pdf_path:str, textos_alvo:list, padrao_re:str, ma
                 for ocr in ocorrencias:
                     area = fitz.Rect(
                         ocr.x0 - margem,
-                        ocr.y0 - margem,
+                        ocr.y0,
                         ocr.x1 + margem,
                         ocr.y1 + margem
                     )
@@ -34,9 +36,9 @@ def encontrar_texto_com_regiao(pdf_path:str, textos_alvo:list, padrao_re:str, ma
                     
                     match alvo:
                         case "Conta do mês":
-                            resultados["mes_consumo"] = texto_area.strip()[27:]
+                            resultados["mes_consumo"] = texto_area[:texto_area.find(ano_atual)+4].strip()
                         case "Consumo mês / kWh":
-                            resultados["consumo"] = int((texto_area[-4:]).strip())
+                            resultados["consumo"] = texto_area[:texto_area.find("Consumo")].strip()
                             
             # Procura por qualquer item que atenda ao padrão regex (padrao_re), padrão para cep definido como r"\d{5}-\d{3}" = xxxxx-xxx
             padroes_encontrados = re.findall(padrao_re, texto_pagina)
@@ -54,11 +56,13 @@ def encontrar_texto_com_regiao(pdf_path:str, textos_alvo:list, padrao_re:str, ma
 
         return resultados
     except ValueError as e:
-        print('Erro')
+        print(f'Erro: {e}')
     
 
 # Uso do código / Teste do código
-# pdf_path = "fitz/conta-ma.pdf"
+# pdf_path = "conta-ma.pdf"
+# pdf_path = "contas/conta-ma-3.pdf"
+
 # textos_alvo = ["Consumo mês / kWh", "Conta do mês"]
 # padrao_cep = re.compile("\\d{5}-\\d{3}") # Padrão regex para encontrar cep no pdf
 # margem = 15  # Ajuste a margem conforme necessário
