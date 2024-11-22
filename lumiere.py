@@ -14,17 +14,6 @@ from exportar_excel import exportar_para_excel
 
 
 # Variáveis e recusros globais
-titulos =  {
-    #TÍTULO LUMIERE
-    'lumiere':"""
-██╗░░░░░  ██╗░░░██╗  ███╗░░░███╗  ██╗  ███████╗  ██████╗░  ███████╗
-██║░░░░░  ██║░░░██║  ████╗░████║  ██║  ██╔════╝  ██╔══██╗  ██╔════╝
-██║░░░░░  ██║░░░██║  ██╔████╔██║  ██║  █████╗░░  ██████╔╝  █████╗░░
-██║░░░░░  ██║░░░██║  ██║╚██╔╝██║  ██║  ██╔══╝░░  ██╔══██╗  ██╔══╝░░
-███████╗  ╚██████╔╝  ██║░╚═╝░██║  ██║  ███████╗  ██║░░██║  ███████╗
-╚══════╝  ░╚═════╝░  ╚═╝░░░░░╚═╝  ╚═╝  ╚══════╝  ╚═╝░░╚═╝  ╚══════╝
-"""
-}
 padroes_re = {
     "nome" : r"^[a-zA-Z]+( [a-zA-Z]+)*$",
     "email" : r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
@@ -385,7 +374,7 @@ def menu_usuario():
 """0. Sair
 1. Registrar consumo
 2. Gerar relatório
-3. Fazer consulta
+3. Pesquisar com filtro
 Escolha: """)
         
         match escolha:
@@ -434,6 +423,10 @@ def registro_manual():
                 if mes_consumo < 1 or mes_consumo > 12:
                     print(f"Erro! Número do mês inválido: {mes_consumo}. Digite novamente.\n")
                 else:
+                    mes_copy = str(mes_consumo)
+                    if len(mes_copy) <= 1:
+                        mes_consumo = f"0{mes_copy}"
+
                     return mes_consumo
             except ValueError as e:
                 print("Erro! Mês precisa ser um número.")
@@ -453,12 +446,14 @@ def registro_manual():
                 print(f"Erro ao salvar o consumo kWh/mês. Erro: {e}")
    
     mes_consumo = obter_mes_consumo()
+    data_consumo = f"{mes_consumo}-{datetime.now().year}"
     consumo_kwh = obter_consumo_kwh()
     
     id = usuario_info['id']
     
-    if cadastrar_consumo(mes_consumo, consumo_kwh, id):
-        print("Cadastro do consumo realizado!")
+    if cadastrar_consumo(data_consumo, consumo_kwh, id):
+        limpa_tela()
+        mostra_titulo("Cadastro do consumo realizado!")
         while True:
             escolha = input("Cadastrar outro mês? \n1.Sim \n2.Não(Menu usuario) \nEscolha: ")
             match escolha:
@@ -530,7 +525,8 @@ def cadastrar_consumo(mes_consumo:str|int, consumo_kwh:int, id:int) -> bool:
         inst_sql.execute(sql, {'id' : id, 'consumo' : consumo_kwh, 'mes_consumo' : mes_consumo})
         conn.commit()
         return True
-    except oracledb.DatabaseError:
+    except oracledb.DatabaseError as e:
+        print(e)
         return False
     except Exception as e:
         print(f"Falha ao cadastrar consumo na base de dados! Erro: {e}")
